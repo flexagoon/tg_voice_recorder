@@ -1,0 +1,17 @@
+menu "TGVR/SD"
+    config SCLK
+        int "SCLK pin"
+        default 4
+
+    config MISO
+        int "MISO pin"
+        default 5
+
+    config MOSI
+        int "MOSI pin"
+        default 6
+
+    config CS
+        int "CS pin"
+        default 7
+endmenu
