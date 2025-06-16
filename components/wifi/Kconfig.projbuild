@@ -1,0 +1,9 @@
+menu "TGVR/WiFi"
+    config SSID
+        string "SSID"
+        default "myssid"
+    
+    config WIFI_PASSWORD
+        string "Password"
+        default "mypassword"
+endmenu
