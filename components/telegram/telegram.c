@@ -36,7 +36,6 @@ esp_err_t send_voice(FILE *file) {
              "bot" BOT_TOKEN "/sendVoice",
       .cert_pem = (const char *)telegram_api_cert,
       .keep_alive_enable = true,
-      .timeout_ms = 25000,
   };
   esp_http_client_handle_t client = esp_http_client_init(&http_client_cfg);
   ESP_RETURN_ON_FALSE(client != NULL, ESP_FAIL, TAG,
