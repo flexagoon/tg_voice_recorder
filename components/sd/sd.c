@@ -8,6 +8,8 @@
 static const char *TAG = "tgvr_sd";
 
 void mount_sd(const char *base_path) {
+  ESP_LOGI(TAG, "Mounting SD card at %s", base_path);
+
   spi_bus_config_t spi_bus_cfg = {
       .sclk_io_num = SCLK,
       .miso_io_num = MISO,
@@ -22,4 +24,6 @@ void mount_sd(const char *base_path) {
 
   esp_vfs_fat_mount_config_t mount_cfg = VFS_FAT_MOUNT_DEFAULT_CONFIG();
   esp_vfs_fat_sdspi_mount(base_path, &host_cfg, &device_cfg, &mount_cfg, NULL);
+
+  ESP_LOGI(TAG, "SD mounted");
 }
