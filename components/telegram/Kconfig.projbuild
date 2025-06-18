@@ -1,0 +1,9 @@
+menu "TGVR/Telegram"
+    config BOT_TOKEN
+        string "Bot token"
+        default "1234567:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+
+    config CHAT_ID
+        string "Chat ID"
+        default "1234567"
+endmenu
