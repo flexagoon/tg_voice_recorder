@@ -11,10 +11,7 @@ void app_main(void) {
   mount_sd("/data");
 
   FILE *file = fopen("/data/voice.ogg", "rb");
-  if (file == NULL) {
-    ESP_LOGE(TAG, "Failed to open file");
-    return;
-  }
+  ESP_RETURN_VOID_ON_FALSE(file != NULL, TAG, "Failed to open file");
 
   send_voice(file);
   fclose(file);
