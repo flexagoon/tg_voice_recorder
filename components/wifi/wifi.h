@@ -1,3 +1,5 @@
 #pragma once
 
-void connect_wifi(void);
+#include "esp_err.h"
+
+esp_err_t connect_wifi(void);

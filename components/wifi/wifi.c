@@ -1,5 +1,6 @@
 #include "wifi.h"
 
+#include "esp_check.h"
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_wifi.h"
@@ -29,6 +30,7 @@ static void try_to_connect(void *arg, esp_event_base_t event_base,
     esp_wifi_connect();
     connection_attempts++;
   } else {
+    ESP_LOGE(TAG, "Failed to connect to the AP, aborting");
     abort();
   }
 }
@@ -43,18 +45,18 @@ static void handle_connection(void *arg, esp_event_base_t event_base,
   }
 }
 
-void connect_wifi(void) {
+esp_err_t connect_wifi(void) {
   connect_notify_task = xTaskGetCurrentTaskHandle();
 
   // CONFIG_ESP_WIFI_NVS_ENABLED is turned off, but ESP-IDF still complains if
   // NVS is not initialized before wifi.
-  nvs_flash_init();
-  esp_netif_init();
-  esp_event_loop_create_default();
+  ESP_ERROR_CHECK(nvs_flash_init());
+  ESP_ERROR_CHECK(esp_netif_init());
+  ESP_ERROR_CHECK(esp_event_loop_create_default());
   esp_netif_create_default_wifi_sta();
 
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-  esp_wifi_init(&cfg);
+  ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
   esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_START, &try_to_connect,
                              NULL);
@@ -68,12 +70,17 @@ void connect_wifi(void) {
                                    .ssid = SSID,
                                    .password = PASSWORD,
                                }};
-  esp_wifi_set_mode(WIFI_MODE_STA);
-  esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
-  esp_wifi_start();
+  ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+  ESP_RETURN_ON_ERROR(esp_wifi_set_config(WIFI_IF_STA, &wifi_config), TAG,
+                      "Failed to set wifi config: %s",
+                      esp_err_to_name(err_rc_));
+
+  ESP_ERROR_CHECK(esp_wifi_start());
 
   ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
   ESP_LOGI(TAG, "connected to ap:%s", SSID);
 
   connect_notify_task = NULL;
+
+  return ESP_OK;
 }
