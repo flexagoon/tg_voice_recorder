@@ -1,3 +1,6 @@
+#include "telegram.h"
+
+#include "esp_check.h"
 #include "esp_http_client.h"
 #include "esp_log.h"
 #include <stdio.h>
@@ -27,7 +30,7 @@ static long get_file_size(FILE *file) {
   return size;
 }
 
-void send_voice(FILE *file) {
+esp_err_t send_voice(FILE *file) {
   esp_http_client_config_t http_client_cfg = {
       .url = "https://api.telegram.org/"
              "bot" BOT_TOKEN "/sendVoice",
@@ -36,26 +39,44 @@ void send_voice(FILE *file) {
       .timeout_ms = 25000,
   };
   esp_http_client_handle_t client = esp_http_client_init(&http_client_cfg);
+  ESP_RETURN_ON_FALSE(client != NULL, ESP_FAIL, TAG,
+                      "Failed to initialize HTTP client");
 
-  esp_http_client_set_header(client, "Content-Type", CONTENT_TYPE);
+  ESP_ERROR_CHECK(
+      esp_http_client_set_header(client, "Content-Type", CONTENT_TYPE));
 
   long file_size = get_file_size(file);
 
   long total_request_size =
       strlen(REQUEST_HEAD) + file_size + strlen(REQUEST_TAIL);
-  esp_http_client_open(client, total_request_size);
+  ESP_RETURN_ON_ERROR(esp_http_client_open(client, total_request_size), TAG,
+                      "Failed to open HTTP stream: %s",
+                      esp_err_to_name(err_rc_));
 
-  esp_http_client_write(client, REQUEST_HEAD, strlen(REQUEST_HEAD));
+  int bytes_written;
+
+  bytes_written =
+      esp_http_client_write(client, REQUEST_HEAD, strlen(REQUEST_HEAD));
+  ESP_RETURN_ON_FALSE(bytes_written != -1, ESP_ERR_HTTP_WRITE_DATA, TAG,
+                      "Failed to write request head");
 
   size_t bytes_read;
   char buffer[1024];
   while ((bytes_read = fread(buffer, sizeof(char), sizeof(buffer), file)) > 0) {
-    esp_http_client_write(client, buffer, bytes_read);
+    bytes_written = esp_http_client_write(client, buffer, bytes_read);
+    ESP_RETURN_ON_FALSE(bytes_written != -1, ESP_ERR_HTTP_WRITE_DATA, TAG,
+                        "Failed to write file chunk");
     ESP_LOGI(TAG, "Wrote %d bytes", bytes_read);
   }
+  ESP_LOGI(TAG, "Writing complete");
 
-  ESP_LOGI(TAG, "Writing done");
-  esp_http_client_write(client, REQUEST_TAIL, strlen(REQUEST_TAIL));
-  esp_http_client_close(client);
-  esp_http_client_cleanup(client);
+  bytes_written =
+      esp_http_client_write(client, REQUEST_TAIL, strlen(REQUEST_TAIL));
+  ESP_RETURN_ON_FALSE(bytes_written != -1, ESP_ERR_HTTP_WRITE_DATA, TAG,
+                      "Failed to write request tail");
+
+  ESP_ERROR_CHECK(esp_http_client_close(client));
+  ESP_ERROR_CHECK(esp_http_client_cleanup(client));
+
+  return ESP_OK;
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "esp_err.h"
 #include <stdio.h>
 
-void send_voice(FILE *file);
+esp_err_t send_voice(FILE *file);
