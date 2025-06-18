@@ -23,9 +23,12 @@ static int connection_attempts = 0;
 static void try_to_connect(void *arg, esp_event_base_t event_base,
                            int32_t event_id, void *event_data) {
   if (connection_attempts < MAX_CONNECTION_ATTEMPTS) {
-    ESP_LOGI(TAG, "Trying to connect to the AP");
+    ESP_LOGI(TAG, "Trying to connect to the AP, attempt %d",
+             connection_attempts);
     esp_wifi_connect();
     connection_attempts++;
+  } else {
+    abort();
   }
 }
 
