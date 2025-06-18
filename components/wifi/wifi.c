@@ -5,6 +5,7 @@
 #include "esp_wifi.h"
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
+#include "nvs_flash.h"
 #include <string.h>
 
 #define WIFI_CONNECTED_BIT BIT0
@@ -45,6 +46,9 @@ static void handle_connection(void *arg, esp_event_base_t event_base,
 void connect_wifi(void) {
   connect_notify_task = xTaskGetCurrentTaskHandle();
 
+  // CONFIG_ESP_WIFI_NVS_ENABLED is turned off, but ESP-IDF still complains if
+  // NVS is not initialized before wifi.
+  nvs_flash_init();
   esp_netif_init();
   esp_event_loop_create_default();
   esp_netif_create_default_wifi_sta();
