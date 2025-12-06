@@ -12,7 +12,7 @@ static i2s_chan_handle_t channel = NULL;
 void init_microphone(void) {
   ESP_LOGI(TAG, "Initializing microphone");
 
-  i2s_chan_config_t chan_cfg =
+  const i2s_chan_config_t chan_cfg =
       I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_AUTO, I2S_ROLE_MASTER);
   ESP_ERROR_CHECK(i2s_new_channel(&chan_cfg, NULL, &channel));
   ESP_LOGI(TAG, "I2S channel created");

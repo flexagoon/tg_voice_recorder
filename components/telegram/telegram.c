@@ -44,9 +44,9 @@ esp_err_t send_voice(FILE *file) {
   ESP_ERROR_CHECK(
       esp_http_client_set_header(client, "Content-Type", CONTENT_TYPE));
 
-  long file_size = get_file_size(file);
+  const long file_size = get_file_size(file);
 
-  long total_request_size =
+  const long total_request_size =
       strlen(REQUEST_HEAD) + file_size + strlen(REQUEST_TAIL);
   ESP_RETURN_ON_ERROR(esp_http_client_open(client, total_request_size), TAG,
                       "Failed to open HTTP stream: %s",
