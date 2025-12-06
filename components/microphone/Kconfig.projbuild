@@ -1,0 +1,13 @@
+menu "TGVR/Microphone"
+    config SCK
+        int "SCK pin"
+        default 1
+
+    config WS
+        int "WS pin"
+        default 2
+
+    config SD
+        int "SD pin"
+        default 3
+endmenu
