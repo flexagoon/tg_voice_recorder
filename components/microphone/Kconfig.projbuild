@@ -1,13 +1,25 @@
 menu "TGVR/Microphone"
-    config SCK
-        int "SCK pin"
-        default 1
+    menu "GPIO"
+        config SCK
+            int "SCK pin"
+            default 1
 
-    config WS
-        int "WS pin"
-        default 2
+        config WS
+            int "WS pin"
+            default 2
 
-    config SD
-        int "SD pin"
-        default 3
+        config SD
+            int "SD pin"
+            default 3
+    endmenu
+
+    menu "Audio"
+        config SAMPLE_RATE
+            int "Sample Rate"
+            default 48000
+
+        config WRITE_FREQ_MS
+            int "Write Frequency (ms)"
+            default 10
+    endmenu
 endmenu
