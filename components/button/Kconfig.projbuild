@@ -1,0 +1,9 @@
+menu "TGVR/Button"
+    config BUTTON_PIN
+        int "Button GPIO pin"
+        default 21
+
+    config DEBOUNCE_TIME_MS
+        int "Button Debounce Time (ms)"
+        default 50
+endmenu
