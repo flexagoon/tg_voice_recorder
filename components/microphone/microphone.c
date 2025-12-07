@@ -1,10 +1,15 @@
+#include "microphone.h"
+
 #include "driver/i2s_std.h"
 #include "esp_log.h"
 #include "format_wav.h"
+#include "freertos/FreeRTOS.h" // IWYU pragma: keep
+#include "freertos/task.h"
 
 #define SCK CONFIG_SCK
 #define WS CONFIG_WS
 #define SD CONFIG_SD
+#define MNT CONFIG_MNT_PATH
 
 #define SAMPLE_RATE CONFIG_SAMPLE_RATE
 #define BYTES_PER_SEC (SAMPLE_RATE * 32 / 8)
@@ -14,7 +19,62 @@ static const char *TAG = "tgvr_microphone";
 
 static i2s_chan_handle_t channel = NULL;
 
-void init_microphone(void) {
+void audio_record_task() {
+  while (1) {
+    ulTaskNotifyTakeIndexed(NOTIF_INDEX_START, pdTRUE, portMAX_DELAY);
+    ESP_LOGI(TAG, "Audio recording started");
+
+    FILE *file = fopen(MNT "/voice.wav", "wb+");
+    if (file == NULL) {
+      ESP_LOGE(TAG, "Failed to open temporary raw audio file");
+      continue;
+    }
+
+    const wav_header_t placeholder_wav_header =
+        WAV_HEADER_PCM_DEFAULT(0, 16, SAMPLE_RATE, 1);
+    fwrite(&placeholder_wav_header, sizeof(placeholder_wav_header), 1, file);
+
+    size_t bytes_written = 0;
+    while (ulTaskNotifyTakeIndexed(NOTIF_INDEX_STOP, pdFALSE, 0) == 0) {
+      size_t bytes_read;
+      static int32_t buffer[BUFFER_SIZE];
+      static int16_t converted_samples[BUFFER_SIZE / 2];
+      if (i2s_channel_read(channel, &buffer, BUFFER_SIZE, &bytes_read,
+                           portMAX_DELAY) == ESP_OK) {
+        // For some reason, samples need to be recorded as 32-bit and then
+        // converted to 16-bit. No idea why, but this works, and I don't feel
+        // like debugging audio signal and bit alignment issues.
+        // https://esp32.com/viewtopic.php?t=15185
+        int samples_read = bytes_read / sizeof(int32_t);
+        for (int i = 0; i < samples_read; i++) {
+          // Make the sound less noisy by removing 11 lowest bits.
+          // Shifting by more makes the audio too quiet, while shifting by less
+          // produces artifacts at high volume.
+          converted_samples[i] = (int16_t)(buffer[i] >> 11);
+        }
+        int converted_bytes = samples_read * sizeof(int16_t);
+        fwrite(converted_samples, converted_bytes, 1, file);
+        bytes_written += converted_bytes;
+      } else {
+        ESP_LOGW(TAG, "I2S read timeout");
+      }
+    }
+
+    ESP_LOGI(TAG, "Finalizing audio recording");
+
+    // Update the WAV header with correct file size.
+    fseek(file, 0, SEEK_SET);
+    wav_header_t final_wav_header =
+        WAV_HEADER_PCM_DEFAULT(bytes_written, 16, SAMPLE_RATE, 1);
+    fwrite(&final_wav_header, sizeof(final_wav_header), 1, file);
+
+    fclose(file);
+
+    ESP_LOGI(TAG, "Audio recording saved to " MNT "/voice.wav");
+  }
+}
+
+TaskHandle_t init_microphone(void) {
   ESP_LOGI(TAG, "Initializing microphone");
 
   const i2s_chan_config_t chan_cfg =
@@ -46,45 +106,10 @@ void init_microphone(void) {
   ESP_ERROR_CHECK(i2s_channel_enable(channel));
   ESP_LOGI(TAG, "I2S channel enabled");
 
+  TaskHandle_t task_handle = NULL;
+  xTaskCreate(audio_record_task, "audio_record_task", 4096, NULL,
+              tskIDLE_PRIORITY + 1, &task_handle);
+
   ESP_LOGI(TAG, "Microphone initialized");
-}
-
-void record_audio(FILE *file, int duration_sec) {
-  ESP_LOGI(TAG, "Recording audio for %d seconds", duration_sec);
-
-  const int bytes_per_sample = 16 / 8;
-  const int chunk_size = SAMPLE_RATE * bytes_per_sample * duration_sec;
-  const wav_header_t wav_header =
-      WAV_HEADER_PCM_DEFAULT(chunk_size, 16, SAMPLE_RATE, 1);
-
-  fwrite(&wav_header, sizeof(wav_header), 1, file);
-
-  // For some reason, samples need to be recorded as 32-bit and then converted
-  // to 16-bit. No idea why, but this works, and I don't feel like debugging
-  // audio signal and bit alignment issues.
-  // https://esp32.com/viewtopic.php?t=15185
-  size_t bytes_read;
-  size_t bytes_written = 0;
-  static int32_t buffer[BUFFER_SIZE];
-  static int16_t converted_samples[BUFFER_SIZE / 2];
-  while (bytes_written < chunk_size) {
-    if (i2s_channel_read(channel, &buffer, BUFFER_SIZE, &bytes_read, 1000) ==
-        ESP_OK) {
-      int samples_read = bytes_read / sizeof(int32_t);
-      for (int i = 0; i < samples_read; i++) {
-        buffer[i] >>= 11;
-        int16_t sample_16bit = (buffer[i] > INT16_MAX)   ? INT16_MAX
-                               : (buffer[i] < INT16_MIN) ? INT16_MIN
-                                                         : (int16_t)buffer[i];
-        converted_samples[i] = sample_16bit;
-      }
-      int converted_bytes = samples_read * sizeof(int16_t);
-      fwrite(converted_samples, converted_bytes, 1, file);
-      bytes_written += converted_bytes;
-    } else {
-      ESP_LOGW(TAG, "I2S read timeout");
-    }
-  }
-
-  ESP_LOGI(TAG, "Recording finished, wrote %zu bytes", bytes_written);
+  return task_handle;
 }

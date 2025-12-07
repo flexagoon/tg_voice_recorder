@@ -6,11 +6,12 @@
 #define MOSI CONFIG_MOSI
 #define MISO CONFIG_MISO
 #define CS CONFIG_CS
+#define MNT_PATH CONFIG_MNT_PATH
 
 static const char *TAG = "tgvr_sd";
 
-void mount_sd(const char *base_path) {
-  ESP_LOGI(TAG, "Mounting SD card at %s", base_path);
+void mount_sd(void) {
+  ESP_LOGI(TAG, "Mounting SD card at %s", MNT_PATH);
 
   const spi_bus_config_t spi_bus_cfg = {
       .sclk_io_num = SCLK,
@@ -26,7 +27,7 @@ void mount_sd(const char *base_path) {
   device_cfg.gpio_cs = CS;
 
   const esp_vfs_fat_mount_config_t mount_cfg = VFS_FAT_MOUNT_DEFAULT_CONFIG();
-  ESP_ERROR_CHECK(esp_vfs_fat_sdspi_mount(base_path, &host_cfg, &device_cfg,
+  ESP_ERROR_CHECK(esp_vfs_fat_sdspi_mount(MNT_PATH, &host_cfg, &device_cfg,
                                           &mount_cfg, NULL));
 
   ESP_LOGI(TAG, "SD mounted");

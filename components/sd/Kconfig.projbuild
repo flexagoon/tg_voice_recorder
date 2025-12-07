@@ -14,4 +14,8 @@ menu "TGVR/SD"
     config CS
         int "CS pin"
         default 7
+
+    config MNT_PATH
+        string "Mount path for SD card"
+        default "/data"
 endmenu

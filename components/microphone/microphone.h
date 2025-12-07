@@ -1,7 +1,8 @@
 #pragma once
 
-#include "esp_err.h"
-#include <stdio.h>
+#include "freertos/idf_additions.h"
 
-void init_microphone(void);
-esp_err_t record_audio(FILE *file, int duration_sec);
+TaskHandle_t init_microphone(void);
+
+#define NOTIF_INDEX_START 0
+#define NOTIF_INDEX_STOP 1

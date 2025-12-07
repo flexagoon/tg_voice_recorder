@@ -1,20 +1,23 @@
-#include "esp_check.h"
+#include "button.h"
 #include "microphone.h"
 #include "sd.h"
-#include "telegram.h"
-#include "wifi.h"
 #include <stdio.h>
+#include <sys/stat.h>
 
 static const char *TAG = "tgvr";
 
+static TaskHandle_t mic_task = NULL;
+
+void on_press(void) {
+  vTaskNotifyGiveIndexedFromISR(mic_task, NOTIF_INDEX_START, NULL);
+}
+
+void on_release(void) {
+  vTaskNotifyGiveIndexedFromISR(mic_task, NOTIF_INDEX_STOP, NULL);
+}
+
 void app_main(void) {
-  init_microphone();
-  mount_sd("/data");
-  connect_wifi();
-
-  FILE *file = fopen("/data/voice.ogg", "rb");
-  ESP_RETURN_VOID_ON_FALSE(file != NULL, TAG, "Failed to open file");
-
-  send_voice(file);
-  fclose(file);
+  mount_sd();
+  mic_task = init_microphone();
+  init_button(on_press, on_release);
 }
