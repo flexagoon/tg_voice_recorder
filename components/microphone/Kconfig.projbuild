@@ -21,5 +21,9 @@ menu "TGVR/Microphone"
         config WRITE_FREQ_MS
             int "Write Frequency (ms)"
             default 10
+
+        config FILTER_BITS
+            int "Number of lowest bits to remove"
+            default 11
     endmenu
 endmenu

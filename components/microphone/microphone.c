@@ -18,6 +18,7 @@
 #define SAMPLE_RATE CONFIG_SAMPLE_RATE
 #define BYTES_PER_SEC (SAMPLE_RATE * 32 / 8)
 #define BUFFER_SIZE (BYTES_PER_SEC * CONFIG_WRITE_FREQ_MS / 1000)
+#define FILTER_BITS CONFIG_FILTER_BITS
 
 static const char *TAG = "tgvr_microphone";
 
@@ -56,10 +57,8 @@ void audio_record_task() {
         // https://esp32.com/viewtopic.php?t=15185
         int samples_read = bytes_read / sizeof(int32_t);
         for (int i = 0; i < samples_read; i++) {
-          // Make the sound less noisy by removing 11 lowest bits.
-          // Shifting by more makes the audio too quiet, while shifting by less
-          // produces artifacts at high volume.
-          converted_samples[i] = (int16_t)(buffer[i] >> 11);
+          // Make the sound less noisy by removing the lowest bits.
+          converted_samples[i] = (int16_t)(buffer[i] >> FILTER_BITS);
         }
         int converted_bytes = samples_read * sizeof(int16_t);
         fwrite(converted_samples, converted_bytes, 1, file);
