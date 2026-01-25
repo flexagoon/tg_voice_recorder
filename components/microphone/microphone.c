@@ -6,6 +6,10 @@
 #include "freertos/FreeRTOS.h" // IWYU pragma: keep
 #include "freertos/task.h"
 
+#include <errno.h> // IWYU pragma: keep
+#include <string.h>
+#include <time.h>
+
 #define SCK CONFIG_SCK
 #define WS CONFIG_WS
 #define SD CONFIG_SD
@@ -24,9 +28,14 @@ void audio_record_task() {
     ulTaskNotifyTakeIndexed(NOTIF_INDEX_START, pdTRUE, portMAX_DELAY);
     ESP_LOGI(TAG, "Audio recording started");
 
-    FILE *file = fopen(MNT "/voice.wav", "wb+");
+    const time_t now = time(NULL);
+    char filename[sizeof(MNT "/YYYY-MM-DD_HH-MM-SS.wav")];
+    strftime(filename, sizeof(filename), MNT "/%F_%H-%M-%S.wav", gmtime(&now));
+    ESP_LOGI(TAG, "Recording audio to %s", filename);
+
+    FILE *file = fopen(filename, "wb+");
     if (file == NULL) {
-      ESP_LOGE(TAG, "Failed to open temporary raw audio file");
+      ESP_LOGE(TAG, "Failed to open temporary raw audio file: %d", errno);
       continue;
     }
 
@@ -70,7 +79,7 @@ void audio_record_task() {
 
     fclose(file);
 
-    ESP_LOGI(TAG, "Audio recording saved to " MNT "/voice.wav");
+    ESP_LOGI(TAG, "Audio recording saved to %s", filename);
   }
 }
 
