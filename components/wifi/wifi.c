@@ -3,6 +3,7 @@
 #include "esp_check.h"
 #include "esp_event.h"
 #include "esp_log.h"
+#include "esp_netif_sntp.h"
 #include "esp_wifi.h"
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
@@ -82,5 +83,18 @@ esp_err_t connect_wifi(void) {
 
   connect_notify_task = NULL;
 
+  return ESP_OK;
+}
+
+esp_err_t init_sntp(void) {
+  ESP_LOGI(TAG, "Initializing SNTP");
+  esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG("pool.ntp.org");
+  esp_netif_sntp_init(&config);
+  esp_err_t result = esp_netif_sntp_sync_wait(pdMS_TO_TICKS(10000));
+  if (result != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to synchronize time: %s", esp_err_to_name(result));
+    return result;
+  }
+  ESP_LOGI(TAG, "SNTP time synchronized");
   return ESP_OK;
 }
