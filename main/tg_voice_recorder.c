@@ -2,6 +2,7 @@
 #include "esp_log.h"
 #include "microphone.h"
 #include "sd.h"
+#include "telegram.h"
 #include "wifi.h"
 #include <stdio.h>
 #include <sys/stat.h>
@@ -22,8 +23,11 @@ void on_release(void) {
 
 void app_main(void) {
   mount_sd();
-  // connect_wifi();
-  // init_sntp();
-  mic_task = init_microphone();
+  connect_wifi();
+  init_sntp();
+
+  QueueHandle_t tg_queue = xQueueCreate(10, sizeof(char[64]));
+  init_telegram(tg_queue);
+  mic_task = init_microphone(tg_queue);
   init_button(on_press, on_release);
 }

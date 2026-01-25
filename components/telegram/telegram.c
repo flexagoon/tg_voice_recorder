@@ -23,6 +23,8 @@ static const char *REQUEST_HEAD =
     "filename=\"voice.ogg\"\r\n\r\n";
 static const char *REQUEST_TAIL = "\r\n--" MULTIPART_BOUNDARY "--";
 
+static QueueHandle_t tg_queue = NULL;
+
 static long get_file_size(FILE *file) {
   fseek(file, 0, SEEK_END);
   long size = ftell(file);
@@ -60,12 +62,12 @@ esp_err_t send_voice(FILE *file) {
                       "Failed to write request head");
 
   size_t bytes_read;
-  char buffer[1024];
+  static char buffer[1024];
   while ((bytes_read = fread(buffer, sizeof(char), sizeof(buffer), file)) > 0) {
     bytes_written = esp_http_client_write(client, buffer, bytes_read);
     ESP_RETURN_ON_FALSE(bytes_written != -1, ESP_ERR_HTTP_WRITE_DATA, TAG,
                         "Failed to write file chunk");
-    ESP_LOGI(TAG, "Wrote %d bytes", bytes_read);
+    ESP_LOGD(TAG, "Wrote %d bytes", bytes_read);
   }
   ESP_LOGI(TAG, "Writing complete");
 
@@ -78,4 +80,34 @@ esp_err_t send_voice(FILE *file) {
   ESP_ERROR_CHECK(esp_http_client_cleanup(client));
 
   return ESP_OK;
+}
+
+void telegram_task(void *pvParameters) {
+  char filename[64];
+  while (1) {
+    if (xQueueReceive(tg_queue, filename, portMAX_DELAY) == pdPASS) {
+      ESP_LOGI(TAG, "Sending voice message: %s", filename);
+      FILE *file = fopen(filename, "rb");
+      if (file == NULL) {
+        ESP_LOGE(TAG, "Failed to open voice file: %d", errno);
+        continue;
+      }
+      esp_err_t err = send_voice(file);
+      if (err == ESP_OK) {
+        ESP_LOGI(TAG, "Voice message sent successfully");
+      } else {
+        ESP_LOGE(TAG, "Failed to send voice message: %s", esp_err_to_name(err));
+      }
+      fclose(file);
+    }
+  }
+}
+
+void init_telegram(QueueHandle_t queue) {
+  ESP_LOGI(TAG, "Initializing Telegram component");
+
+  tg_queue = queue;
+
+  xTaskCreate(telegram_task, "telegram_task", 8192, NULL, tskIDLE_PRIORITY + 5,
+              NULL);
 }

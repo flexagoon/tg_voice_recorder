@@ -1,6 +1,5 @@
 #pragma once
 
-#include "esp_err.h"
-#include <stdio.h>
+#include "freertos/idf_additions.h"
 
-esp_err_t send_voice(FILE *file);
+void init_telegram(QueueHandle_t queue);

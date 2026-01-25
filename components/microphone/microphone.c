@@ -24,13 +24,15 @@ static const char *TAG = "tgvr_microphone";
 
 static i2s_chan_handle_t channel = NULL;
 
-void audio_record_task() {
+static QueueHandle_t tg_queue = NULL;
+
+void audio_record_task(void *pvParameters) {
   while (1) {
     ulTaskNotifyTakeIndexed(NOTIF_INDEX_START, pdTRUE, portMAX_DELAY);
     ESP_LOGI(TAG, "Audio recording started");
 
     const time_t now = time(NULL);
-    char filename[sizeof(MNT "/YYYY-MM-DD_HH-MM-SS.wav")];
+    char filename[64];
     strftime(filename, sizeof(filename), MNT "/%F_%H-%M-%S.wav", gmtime(&now));
     ESP_LOGI(TAG, "Recording audio to %s", filename);
 
@@ -79,10 +81,12 @@ void audio_record_task() {
     fclose(file);
 
     ESP_LOGI(TAG, "Audio recording saved to %s", filename);
+
+    xQueueSend(tg_queue, filename, portMAX_DELAY);
   }
 }
 
-TaskHandle_t init_microphone(void) {
+TaskHandle_t init_microphone(QueueHandle_t queue) {
   ESP_LOGI(TAG, "Initializing microphone");
 
   const i2s_chan_config_t chan_cfg =
@@ -114,9 +118,11 @@ TaskHandle_t init_microphone(void) {
   ESP_ERROR_CHECK(i2s_channel_enable(channel));
   ESP_LOGI(TAG, "I2S channel enabled");
 
+  tg_queue = queue;
+
   TaskHandle_t task_handle = NULL;
   xTaskCreate(audio_record_task, "audio_record_task", 4096, NULL,
-              tskIDLE_PRIORITY + 1, &task_handle);
+              tskIDLE_PRIORITY + 10, &task_handle);
 
   ESP_LOGI(TAG, "Microphone initialized");
   return task_handle;
